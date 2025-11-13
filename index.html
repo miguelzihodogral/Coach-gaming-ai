@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Clipes de Jogos (Robô V.13 - Falha de Leitura)</title>
+    <!-- Carrega o Tailwind CSS para estilização moderna e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212; 
+        }
+        .app-card {
+            background-color: #1f1f1f; 
+        }
+        .result-text {
+            color: #e0e0e0;
+        }
+        .progress-bar {
+            transition: width 0.5s linear;
+        }
+        /* Estilos para o ranking de ELITE */
+        .ranking-elite {
+            color: #FFD700; /* Ouro */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            font-size: 1.5rem; 
+            font-weight: 900;
+        }
+        /* Estilos para o ranking de LOW-SKILL (Crítico) */
+        .ranking-low {
+            color: #E74C3C; /* Vermelho escuro */
+            text-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+            font-size: 1.5rem; 
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-xl app-card p-6 sm:p-8 rounded-xl shadow-2xl border border-gray-700">
+
+        <!-- Título principal do Aplicativo -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-teal-400 mb-2">🤖 Robô Classificador de Desempenho em Jogos V.13</h1>
+            <p class="text-sm text-gray-400">Análise de clipes de jogos. O robô irá tentar determinar o ranqueamento. (Pode falhar).</p>
+        </header>
+        
+        <!-- Seleção Manual do Jogo (Mantida) -->
+        <section class="mb-6">
+            <label for="gameSelect" class="block text-gray-300 font-medium mb-2">Qual jogo será analisado no clip?</label>
+            <select id="gameSelect" class="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:ring-teal-500 focus:border-teal-500">
+                <option value="" disabled selected>-- Selecione o Jogo --</option>
+                <!-- Opções serão preenchidas via JavaScript -->
+            </select>
+        </section>
+        
+        <!-- Área de Upload de Vídeo -->
+        <section class="mb-6 border-2 border-dashed border-teal-600 p-4 rounded-xl hover:border-teal-400 transition duration-300">
+            <label for="videoUpload" class="block text-center cursor-pointer">
+                <p class="result-text mb-2 font-medium">Selecione um clip de jogo (vídeo) para análise</p>
+                <input type="file" id="videoUpload" accept="video/*" class="hidden">
+                <div class="w-full h-24 flex items-center justify-center bg-gray-800 rounded-lg overflow-hidden border border-gray-600">
+                    <p id="videoPlaceholder" class="text-gray-400 text-center p-4">
+                        Nenhum vídeo selecionado. Clique para escolher o arquivo.
+                    </p>
+                </div>
+            </label>
+        </section>
+
+        <!-- Botão de Avaliação -->
+        <button id="analyzeButton"
+            class="w-full py-3 bg-teal-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-teal-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            Analisar Clip de Jogo (Análise em 5 segundos)
+        </button>
+
+        <!-- Área de Resultados (Escondida Inicialmente) -->
+        <section id="resultsSection" class="mt-8 pt-4 border-t border-gray-700 hidden">
+            <h3 class="text-xl font-bold text-teal-400 mb-4">Progresso da Análise da IA:</h3>
+
+            <!-- Barra de Progresso -->
+            <div class="w-full bg-gray-700 rounded-full h-4 mb-2">
+                <div id="progressBar" class="progress-bar h-4 rounded-full bg-teal-500" style="width: 0%"></div>
+            </div>
+            <p id="progressMessage" class="text-sm text-gray-400 text-center mb-4">Aguardando vídeo...</p>
+
+            <!-- Relatório Final (Aparece após o processamento) -->
+            <div id="finalReport" class="hidden p-5 bg-gray-800 rounded-xl border border-gray-700 shadow-md">
+                <h4 class="text-lg font-bold text-teal-400 mb-3">Resultados Principais da Análise:</h4>
+
+                <!-- Jogo Identificado -->
+                <div class="flex justify-between items-center mb-3 p-2 bg-gray-700 rounded-lg">
+                    <span class="text-base font-medium text-gray-300">Jogo Selecionado:</span>
+                    <span id="gameDisplay" class="text-xl font-extrabold text-pink-400">--</span>
+                </div>
+                
+                <!-- Ranking Merecido -->
+                <div class="flex justify-between items-center mb-3 p-2 bg-gray-700 rounded-lg">
+                    <span class="text-base font-medium text-gray-300">Ranking Merecido (IA V.13):</span>
+                    <span id="rankingDisplay" class="text-2xl font-extrabold">--</span> 
+                </div>
+
+                <!-- Relatório Detalhado -->
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <h5 class="text-lg font-bold text-teal-400 mb-2">Relatório de Análise Técnica Completo (IA V.13.0):</h5>
+                    <div id="detailedReport" class="text-sm text-gray-300 p-3 bg-gray-900 rounded-lg whitespace-pre-line">
+                        Aguardando análise...
+                    </div>
+                </div>
+
+
+                <div id="statusMessage" class="p-3 rounded-lg text-center font-semibold border transition duration-500 mt-4">
+                    Análise concluída.
+                </div>
+            </div>
+            
+            <button onclick="resetApp()" class="w-full mt-4 text-sm text-gray-500 hover:text-gray-400">
+                Limpar Formulário
+            </button>
+        </section>
+
+    </div>
+
+    <script>
+        // Elementos da UI
+        const videoUpload = document.getElementById('videoUpload');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const resultsSection = document.getElementById('resultsSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressMessage = document.getElementById('progressMessage');
+        const finalReport = document.getElementById('finalReport');
+        const gameDisplay = document.getElementById('gameDisplay');
+        const rankingDisplay = document.getElementById('rankingDisplay');
+        const detailedReportElement = document.getElementById('detailedReport');
+        const statusMessage = document.getElementById('statusMessage');
+        const gameSelect = document.getElementById('gameSelect');
+
+        const ANALYSIS_TIME_MS = 5000; // Tempo total de análise: 5 segundos fixos
+        
+        // JOGOS ATUALIZADOS
+        const GAMES = ["Valorant", "Fortnite", "Free Fire", "Rocket League", "Clash Royale"];
+
+        // Mapeamento de Rankings TOP OFICIAIS
+        const ELITE_RANKS = {
+            "Valorant": "RADIANTE (TOP 0.01%)",
+            "Fortnite": "UNREAL (TOP 0.01%)",
+            "Rocket League": "LENDA SUPER SÔNICA (SSL)",
+            "Free Fire": "DESAFIANTE SUPREMO",
+            "Clash Royale": "CAMPEÃO SUPREMO (TOP 1000)"
+        };
+
+        // Mapeamento de Rankings BAIXOS/COMUNS
+        const LOW_RANKS = {
+            "Valorant": ["FERRO I", "BRONZE I", "PRATA I"],
+            "Fortnite": ["BRONZE I", "PRATA I", "OURO I"],
+            "Rocket League": ["BRONZE I", "PRATA I", "OURO I"],
+            "Free Fire": ["PATENTE I", "PRATA I", "OURO I"],
+            "Clash Royale": ["ARENA I", "BRONZE", "PRATA"]
+        };
+
+        /**
+         * Seleciona aleatoriamente um rank de uma lista.
+         */
+        function getRandomRank(rankList) {
+            const index = Math.floor(Math.random() * rankList.length);
+            return rankList[index];
+        }
+
+        /**
+         * Inicializa o app e preenche o seletor de jogos.
+         */
+        function initializeApp() {
+            populateGameSelect();
+            checkInputs();
+
+            // Adiciona listeners
+            gameSelect.addEventListener('change', checkInputs);
+            videoUpload.addEventListener('change', checkInputs);
+        }
+
+        /**
+         * Preenche o seletor de jogos com as opções definidas.
+         */
+        function populateGameSelect() {
+            // Limpa o seletor primeiro
+            gameSelect.innerHTML = '<option value="" disabled selected>-- Selecione o Jogo --</option>';
+            GAMES.forEach(game => {
+                const option = document.createElement('option');
+                option.value = game;
+                option.textContent = game;
+                gameSelect.appendChild(option);
+            });
+        }
+
+        /**
+         * Verifica se o botão deve estar ativo (requer vídeo E jogo selecionado).
+         */
+        function checkInputs() {
+            const file = videoUpload.files.length > 0;
+            const gameSelected = gameSelect.value !== "";
+            // Não precisa de modo de skill, apenas jogo e vídeo
+            analyzeButton.disabled = !(file && gameSelected);
+        }
+
+        // Event Listeners
+        videoUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                videoPlaceholder.textContent = `Clip Selecionado: ${file.name} (Tamanho: ${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                resultsSection.classList.add('hidden');
+            } else {
+                videoPlaceholder.textContent = "Nenhum vídeo selecionado. Clique para escolher o arquivo.";
+            }
+        });
+
+        analyzeButton.addEventListener('click', () => {
+            if (analyzeButton.disabled) {
+                progressMessage.textContent = "Erro: Selecione o jogo e o vídeo antes de analisar.";
+                return;
+            }
+
+            analyzeButton.disabled = true;
+            resultsSection.classList.remove('hidden');
+            finalReport.classList.add('hidden');
+            progressBar.style.width = '0%';
+            progressBar.classList.remove('bg-green-500');
+            progressBar.classList.add('bg-teal-500');
+            progressMessage.textContent = 'Iniciando análise do clip de vídeo (5 segundos)...';
+            
+            simulateProgress();
+        });
+
+        /**
+         * Simula o progresso da barra em 5 segundos.
+         */
+        function simulateProgress() {
+            progressBar.style.transitionDuration = `${ANALYSIS_TIME_MS / 1000}s`;
+            
+            setTimeout(() => {
+                progressMessage.textContent = 'Processando IA: Tentando identificar jogabilidade e padrões de ranqueamento...';
+                progressBar.style.width = '95%'; 
+            }, 50);
+            
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('bg-teal-500');
+                progressBar.classList.add('bg-green-500'); 
+                displaySimulatedResult();
+                analyzeButton.disabled = false;
+            }, ANALYSIS_TIME_MS);
+        }
+
+        /**
+         * Função principal de simulação de resultados (Confusão da IA).
+         */
+        function displaySimulatedResult() {
+            const selectedGame = gameSelect.value;
+            
+            // 40% de chance de ser ELITE, 60% de chance de ser LOW/Comum. (IA Confusa)
+            const isEliteResult = Math.random() < 0.4; 
+            const reportType = isEliteResult ? 'ELITE' : 'LOW';
+
+            let finalRanking;
+            
+            if (isEliteResult) {
+                finalRanking = ELITE_RANKS[selectedGame];
+            } else {
+                finalRanking = getRandomRank(LOW_RANKS[selectedGame]);
+            }
+
+            // Geradores de Dados Fictícios (Ajustados para o contexto de cada jogo)
+            let KDA, ACCURACY, detailedReport, message, colorClass, rankClass, verdictMessage;
+
+            // MÉTRICAS GERAIS (adaptadas para jogos como CR)
+            const genericScore = isEliteResult ? (Math.random() * 3 + 4).toFixed(2) : (Math.random() * 0.5 + 0.8).toFixed(2);
+            const decisionTime = isEliteResult ? (Math.random() * 0.5 + 0.2).toFixed(2) : (Math.random() * 1.5 + 1.0).toFixed(2);
+            const CONFIDENCE = isEliteResult ? (Math.random() * 10 + 85).toFixed(2) : (Math.random() * 20 + 40).toFixed(2); // Confiança da IA
+
+            detailedReport = `--- RELATÓRIO DE ANÁLISE DE PERFORMANCE (NÍVEL: ${reportType}) ---\n`;
+            detailedReport += `\n[JOGO ANALISADO]: ${selectedGame}\n`;
+            detailedReport += `[DIFICULDADE DO VÍDEO]: ALTA (Dados Inconsistentes)\n`;
+            detailedReport += `[VERSÃO DA IA]: V.13.0 - Módulo de Avaliação Instável\n\n`;
+            detailedReport += `[NÍVEL DE CONFIANÇA DA IA]: ${CONFIDENCE}% (Resultado pode ser impreciso)\n`;
+
+
+            if (isEliteResult) {
+                detailedReport += `\n**MÉTRICAS DETALHADAS (Simulação de Dados de Elite):**\n`;
+                if (selectedGame === "Clash Royale") {
+                    detailedReport += `- Razão de Trocas Positivas (Simulada): ${genericScore} (Eficiência de Elixir Máxima)\n`;
+                    detailedReport += `- Tempo Médio de Decisão (Simulada): ${decisionTime}s (Reação Imediata do Nível Top)\n`;
+                } else if (selectedGame === "Rocket League") {
+                    detailedReport += `- Score por Toque (SPT) (Simulada): ${genericScore} (Controle de Bola Aéreo Perfeito)\n`;
+                    detailedReport += `- Tempo Médio de Rotação (Simulada): ${decisionTime}s (Cobertura de Campo Impecável)\n`;
+                } else { // FPS/BR
+                    detailedReport += `- Razão KDA (Simulada): ${genericScore} (Dominância Total e Inquestionável)\n`;
+                    detailedReport += `- Tempo Médio de Reação (Simulada): ${decisionTime}s (Mira Computadorizada/Mecânica Sem Falhas)\n`;
+                }
+
+                detailedReport += `\n**ANÁLISE COMPORTAMENTAL:**\n`;
+                detailedReport += `Apesar da inconsistência na leitura do clip, a IA detectou momentos de maestria. Classificação de **${finalRanking}** atribuída.`;
+                
+                rankClass = 'ranking-elite';
+                colorClass = 'bg-yellow-900 text-yellow-300 border-yellow-700';
+                message = `ANÁLISE CONCLUÍDA: RANQUEAMENTO TOP ${finalRanking} CONFIRMADO.`;
+                verdictMessage = `O Robô confirma o ranqueamento de **${finalRanking}**. Um resultado de elite, mesmo com falhas de leitura.`;
+                
+            } else { // Low Skill
+                detailedReport += `\n**MÉTRICAS DETALHADAS (Simulação de Dados Comuns):**\n`;
+                 if (selectedGame === "Clash Royale") {
+                    detailedReport += `- Razão de Trocas Positivas (Simulada): ${genericScore} (Vazamento Excessivo de Elixir)\n`;
+                    detailedReport += `- Tempo Médio de Decisão (Simulada): ${decisionTime}s (Reação Lenta e Hesitante)\n`;
+                } else if (selectedGame === "Rocket League") {
+                    detailedReport += `- Score por Toque (SPT) (Simulada): ${genericScore} (Falta de Aéreas e Erros de Rotação)\n`;
+                    detailedReport += `- Tempo Médio de Rotação (Simulada): ${decisionTime}s (Posicionamento Incorreto e Lento)\n`;
+                } else { // FPS/BR
+                    detailedReport += `- Razão KDA (Simulada): ${genericScore} (Impacto Mínimo)\n`;
+                    detailedReport += `- Tempo Médio de Reação (Simulada): ${decisionTime}s (Mecânica Básica Inconsistente)\n`;
+                }
+                
+                detailedReport += `\n**ANÁLISE COMPORTAMENTAL:**\n`;
+                detailedReport += `O Robô encontrou dificuldades para analisar o clip, e a maioria dos dados aponta para erros fundamentais de jogabilidade. Classificação de **${finalRanking}** atribuída.`;
+
+                rankClass = 'ranking-low';
+                colorClass = 'bg-red-900 text-red-300 border-red-700';
+                message = `ANÁLISE CONCLUÍDA: RANQUEAMENTO ${finalRanking} ATRIBUÍDO. Falha na Leitura.`;
+                verdictMessage = `O Robô confirma o ranqueamento de **${finalRanking}**. Ranqueamento baixo devido à falta de clareza nos dados.`;
+            }
+
+            detailedReport += `\n\n**VEREDITO FINAL (IA V.13):**\n`;
+            detailedReport += verdictMessage;
+
+            // Atualização da UI
+            gameDisplay.textContent = selectedGame;
+            rankingDisplay.textContent = finalRanking;
+            rankingDisplay.className = `text-2xl font-extrabold ${rankClass}`;
+            detailedReportElement.textContent = detailedReport;
+
+            statusMessage.className = `p-3 rounded-lg text-center font-semibold border transition duration-500 mt-4 ${colorClass}`;
+            statusMessage.textContent = message;
+
+            finalReport.classList.remove('hidden');
+            progressMessage.textContent = 'Análise concluída em 5.0 segundos.';
+        }
+
+        /**
+         * Reinicia o formulário.
+         */
+        window.resetApp = function() {
+            videoUpload.value = ''; 
+            gameSelect.value = '';
+            videoPlaceholder.textContent = "Nenhum vídeo selecionado. Clique para escolher o arquivo.";
+            finalReport.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            progressBar.style.width = '0%';
+            progressBar.classList.remove('bg-green-500');
+            progressBar.classList.add('bg-teal-500');
+            
+            progressMessage.textContent = "Formulário limpo. Pronto para nova análise.";
+            
+            initializeApp(); 
+        }
+
+        // Inicia o aplicativo ao carregar a página
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
